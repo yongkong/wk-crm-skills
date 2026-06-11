@@ -1,6 +1,6 @@
 # WK-CRM Skills
 
-悟空 CRM 中集车辆定制版 AI Agent 技能集，为 CRM 模块开发提供标准化、自动化的 AI 辅助工作流。
+悟空 CRM AI Agent 技能集，为 CRM 模块开发提供标准化、自动化的 AI 辅助工作流。
 
 ## 技能列表
 
@@ -64,7 +64,7 @@
 
 ## 项目背景
 
-- **项目**：悟空 CRM 中集车辆定制版（wk_crm）
+- **项目**：悟空 CRM 定制版（wk_crm）
 - **技术栈**：Java 21 + Spring Boot 3.3 + Spring Cloud Alibaba + Vue 3 + Element Plus
 - **后端**：`zhongjicheliang/` — 微服务架构（admin / crm / examine / gateway 等）
 - **前端**：`dz-zhongji/` — Vue 3 + Vite + TypeScript
