@@ -6,7 +6,7 @@
 
 | 技能 | 说明 | 阶段 |
 |------|------|------|
-| [wk-crm-prototype-to-spec](./wk-crm-prototype-to-spec/) | 从原型/描述生成需求文档（MD + XLSX） | 5 Phase |
+| [wk-crm-prototype-to-spec](./wk-crm-prototype-to-spec/) | 从原型/描述生成需求文档，支持 template（MD+XLSX）和 spec（深度分析文档）双模式 | 5 Phase · v2.0 |
 | [wk-crm-new-module](./wk-crm-new-module/) | 从零创建新 CRM 业务模块 | 6 Phase |
 | [wk-crm-audit-module](./wk-crm-audit-module/) | 对已有 CRM 模块进行全面审计与查漏补缺 | 5 Phase |
 
@@ -19,23 +19,41 @@
 
 ## wk-crm-prototype-to-spec
 
-根据蓝湖原型或文字描述，填写 CRM 新模块开发需求模板，同步生成 Markdown 和 Excel 双格式文件。输出可直接作为 `/wk-crm-new-module` 的输入。
+根据蓝湖原型或文字描述生成 CRM 模块需求文档，支持**两种输出模式**：
 
-**5 个阶段**：
+| 模式 | 输出 | 用途 |
+|------|------|------|
+| **template** | `CRM新模块开发需求模板.md` + `.xlsx` | 作为 `/wk-crm-new-module` 输入，驱动代码生成 |
+| **spec** | `{模块名}-需求分析文档.md` | 12 章 + 4 附录深度文档，供开发团队参考 |
 
-1. **Phase 0** — 原型分析与数据提取（蓝湖 URL / 截图 / 文字描述）
-2. **Phase 1** — 参数确认与冲突检测（type / 菜单基址 / 复杂度 / 渲染模式）
-3. **Phase 2** — 填写 Markdown 模板（7 个章节）
-4. **Phase 3** — 生成 Excel 文件（6 个 Sheet，openpyxl）
-5. **Phase 4** — 交叉验证（MD 与 XLSX 一致性）
+标杆范例：`doc/2.合同变更/合同变更管理模块-需求分析.md`
+
+**共享 Phase**：
+
+- **Phase 0** — 原型分析与数据提取（蓝湖 URL / 截图 / 文字描述，含右侧业务说明面板逐字提取）
+
+**template 模式**（7 章模板 + Excel 6 Sheet）：
+
+1. **Phase T1** — 参数确认与冲突检测（type / 菜单基址 / 复杂度 / 渲染模式）
+2. **Phase T2** — 填写 Markdown 模板（7 个章节）
+3. **Phase T3** — 生成 Excel 文件（6 个 Sheet，openpyxl）
+4. **Phase T4** — 交叉验证（MD 与 XLSX 一致性）
+
+**spec 模式**（12 章 + 4 附录深度文档）：
+
+1. **Phase S1** — 后端代码分析（PO / Controller / Service / BO / Mapper 逆向提取）
+2. **Phase S2** — 参数确认（含后端代码状态确认）
+3. **Phase S3** — 生成需求分析文档（12 章 + 4 附录，按 spec-template.md 结构）
+4. **Phase S4** — 交叉验证（代码 vs 文档一致性）
 
 ### 参考文档
 
 | 文档 | 用途 |
 |------|------|
-| `references/excel-sheet-mapping.md` | 6 个 Sheet 与 MD 章节的精确列映射 |
+| `references/spec-template.md` | spec 模式 12 章 + 4 附录结构模板 |
+| `references/excel-sheet-mapping.md` | 6 个 Sheet 与 MD 章节的精确列映射（template 模式） |
 | `references/reference-modules.md` | 已有模块对照表（按复杂度/业务特征选择参考） |
-| `scripts/fill_xlsx.py` | Excel 生成 Python 脚本模板 |
+| `scripts/fill_xlsx.py` | Excel 生成 Python 脚本模板（template 模式） |
 
 ## wk-crm-new-module
 
