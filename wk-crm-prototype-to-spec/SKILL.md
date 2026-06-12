@@ -1,14 +1,14 @@
 ---
 name: wk-crm-prototype-to-spec
-description: 根据蓝湖原型或文字描述，填写 CRM 新模块开发需求模板（Markdown + Excel 双格式）。提取页面结构、字段、按钮、业务规则，自动生成可直接作为 /wk-crm-new-module 输入的完整需求文档。Use when filling CRM module requirement templates from prototypes or descriptions.
+description: 根据蓝湖原型或文字描述，生成 CRM 模块需求文档。支持两种输出模式：(1) template — 填写 CRM 新模块开发需求模板（Markdown + Excel），作为 /wk-crm-new-module 输入；(2) spec — 生成完整需求分析文档（12章+4附录），包含页面交互、数据模型、接口设计、审批集成、ERP集成、前端方案、DDL、业务规则等。Use when filling CRM module requirement templates or generating requirement analysis documents from prototypes.
 license: MIT
-compatibility: 需要 openpyxl Python 库（Excel 生成）。
+compatibility: 需要 openpyxl Python 库（Excel 生成，仅 template 模式）。
 metadata:
   author: wukong-team
-  version: "1.0"
+  version: "2.0"
 ---
 
-根据原型或描述填写 CRM 新模块开发需求模板，同步生成 Markdown 和 Excel 双格式文件。
+根据原型或描述生成 CRM 模块需求文档，支持两种输出模式。
 
 **Input**
 
@@ -20,17 +20,23 @@ metadata:
 
 如果输入不清晰，使用 AskUserQuestion 工具逐项收集必填参数。
 
-**Output**
+**Output Mode**
 
-完成后输出两个文件：
-- `doc/{模块目录}/CRM新模块开发需求模板.md` — Markdown 格式需求文档
-- `doc/{模块目录}/CRM新模块开发需求模板.xlsx` — Excel 格式需求文档（6 个 Sheet）
+使用 AskUserQuestion 让用户选择输出模式：
 
-这两个文件可直接作为 `/wk-crm-new-module` Skill 的输入。
+| 模式 | 输出文件 | 用途 |
+|------|---------|------|
+| **template** | `CRM新模块开发需求模板.md` + `.xlsx` | 作为 `/wk-crm-new-module` 的输入，驱动代码生成 |
+| **spec** | `{模块名}-需求分析文档.md` | 全面的需求分析文档，供开发团队参考实现 |
 
-**Steps**
+- **template 模式**：7 章结构化模板 + Excel 6 Sheet，面向 AI 代码生成
+- **spec 模式**：12 章 + 4 附录深度文档，面向人类开发者 + AI 双读者
 
-## Phase 0：原型分析与数据提取
+标杆范例：`doc/2.合同变更/合同变更管理模块-需求分析.md`
+
+---
+
+## 共享 Phase：原型分析与数据提取
 
 ### 蓝湖原型解析流程
 
@@ -40,17 +46,20 @@ metadata:
 2. 等待 iframe 加载完成（`wait_for` + timeout 5000ms）
 3. 执行 `take_snapshot` 获取页面 a11y tree
 4. 从 a11y tree 中提取结构化信息：
-   - **列表页**：Tab 名称、列标题、搜索字段、操作按钮、状态驱动规则
+   - **列表页**：Tab 名称、列标题、搜索字段、**头部批量操作**（多选后出现的操作按钮，如转移/删除/导出）、**行内操作**（每行末尾的操作按钮，如编辑/作废/提交）、状态驱动规则
    - **新建页**：表单字段、字段类型、必填标记、默认值、计算规则
-   - **详情页**：展示区域、操作按钮
+   - **详情页**：展示区域、操作按钮、审批流时间线
+   - **弹窗页**：选择器字段、分组结构、确认/取消操作
    - **字段说明表**：字段名、输入方式、是否字典、关联逻辑
 5. 如果有多个子页面，逐一 `click` 导航并重复 `take_snapshot`
+6. **提取右侧业务说明文字**：原型通常在右侧有业务规则、审批说明、特殊逻辑、权限说明等面板，必须逐字提取
 
 ### 截图解析流程
 
 如果用户提供截图路径：
 1. 使用 `image-analyzer` 技能分析每张截图
 2. 提取可见的字段名、按钮、Tab、表格结构等
+3. 提取右侧业务说明面板文字
 
 ### 必须提取的参数
 
@@ -59,15 +68,21 @@ metadata:
 | 类别 | 提取项 |
 |------|--------|
 | 基础信息 | 模块中文名、英文名、是否有审批、表单渲染模式 |
-| 列表页 | Tab名称、列字段、搜索字段、操作按钮及状态驱动规则 |
-| 表单字段 | 字段英文名、中文显示名、类型(formType)、必填、选项值、列表是否显示 |
+| 列表页 | Tab名称、列字段、搜索字段、**头部批量操作**、**行内操作**、状态驱动规则 |
+| 新建页 | 表单字段、字段类型、必填标记、默认值、计算规则、附加表（散件/银色套装等） |
+| 详情页 | 展示区域（基础信息/申请内容/变更信息）、操作按钮、审批流时间线、Tab（详细资料/操作记录/打印记录） |
+| 弹窗页 | 分组结构、字段列表、全选/展开收起、确认操作 |
 | 子表 | 子表名、字段列表、分类方式 |
-| 业务规则 | 状态流转、自动填充、计算规则、ERP集成、作废/撤回规则 |
-| 权限 | 额外按钮、角色授权、权限维度 |
+| 业务规则 | 状态流转、自动填充、计算规则、ERP集成、作废/撤回规则、右侧说明面板全文 |
+| 权限 | 额外按钮、角色授权、权限维度（国内/国外、半挂/液罐、标准权限） |
 
 **门禁**：提取完成，列出待确认项 ✓
 
-## Phase 1：参数确认与冲突检测
+---
+
+## template 模式专属 Phase
+
+### Phase T1：参数确认与冲突检测
 
 1. **确认 type 和菜单基址**
 
@@ -109,11 +124,11 @@ metadata:
 
 **门禁**：用户确认参数卡片 ✓
 
-## Phase 2：填写 Markdown 模板
+### Phase T2：填写 Markdown 模板
 
 基于 `wk-crm-skills/wk-crm-new-module/references/CRM新模块开发需求模板.md` 的结构，生成填写后的文档。
 
-### 七个章节填写规则
+#### 七个章节填写规则
 
 **一、模块基础信息**：
 - 标题改为 `{模块中文名} - 开发需求文档`
@@ -141,7 +156,8 @@ metadata:
 **五、页面需求**：
 - 列表 Tab：通常为标准四个（全部/我负责的/下属负责的/我关注的）
 - 列表默认字段：从原型列表页列标题提取
-- 操作按钮：标准 CRUD + 原型中的额外按钮
+- **头部批量操作**：从原型中提取多选后出现的操作按钮
+- **行内操作**：每行末尾的操作按钮，注意状态驱动规则
 
 **六、菜单与权限**：
 - 标准 6 按钮（save/update/index/read/delete/transfer）
@@ -153,75 +169,223 @@ metadata:
 
 **门禁**：Markdown 文件已生成且结构完整 ✓
 
-## Phase 3：生成 Excel 文件
+### Phase T3：生成 Excel 文件
 
 使用 `scripts/fill_xlsx.py` 脚本或内联 openpyxl 代码生成 Excel。
 
-### Excel 6 个 Sheet 结构
-
-详细列映射见 `references/excel-sheet-mapping.md`。概要：
-
-| Sheet | 列 | 数据来源 |
-|-------|------|---------|
-| ① 模块基础信息 | 参数名/参数值/填写说明 | MD 第一章 |
-| ② 主表字段 | 字段名/类型/必填/默认值/说明 | MD 第二章 2.1 |
-| ③ 表单字段 | 字段名/显示名/类型/必填/选项/列表显示/系统自动/说明 | MD 第三章 |
-| ④ 子表设计 | 子表名/中文名/字段名/显示名/类型/必填/说明 | MD 第二章 2.2 |
-| ⑤ 业务规则 | 规则类型/描述/触发时机/说明 | MD 第四章 |
-| ⑥ 页面与权限 | 配置项/值/说明 | MD 第五、六章 |
-
-### Excel 生成方式
-
-**方式 A：使用脚本**（推荐）
-
-复制 `scripts/fill_xlsx.py` 模板脚本到工作目录，修改数据部分后执行：
-```bash
-python fill_xlsx.py
-```
-
-**方式 B：内联生成**
-
-如果数据量不大，可直接在对话中编写 openpyxl 代码生成。
-
-### openpyxl 注意事项
-
-1. **合并单元格处理**：模板中有合并单元格，清空数据前必须先 `unmerge_cells`
-2. **MergedCell 只读**：`MergedCell.value` 是只读属性，不能直接赋值
-3. **安全清空函数**：
-   ```python
-   def clear_rows(ws, start_row, max_row=None):
-       for row in ws.iter_rows(min_row=start_row, max_row=max_row or ws.max_row):
-           for cell in row:
-               if not isinstance(cell, openpyxl.cell.cell.MergedCell):
-                   cell.value = None
-   ```
-4. **样式保留**：填写数据行时添加绿色背景标识已填写
+详细列映射见 `references/excel-sheet-mapping.md`。
 
 **门禁**：Excel 文件已生成且 6 个 Sheet 数据完整 ✓
 
-## Phase 4：交叉验证
+### Phase T4：交叉验证
 
-对比 Markdown 和 Excel 内容，确认：
-
-- [ ] 模块基础信息 8 项一致
-- [ ] 主表业务字段数量和名称一致
-- [ ] 表单字段数量和类型一致
-- [ ] 子表字段一致（L3+）
-- [ ] 业务规则条目一致
-- [ ] 页面配置（Tab/字段/按钮）一致
+对比 Markdown 和 Excel 内容，确认各 Sheet 数据一致。
 
 **门禁**：双格式交叉验证通过 ✓
 
+---
+
+## spec 模式专属 Phase
+
+> spec 模式生成类似 `doc/2.合同变更/合同变更管理模块-需求分析.md` 的深度文档。
+> 文档结构模板见 `references/spec-template.md`。
+
+### Phase S1：后端代码分析
+
+**目的**：从已有后端代码中提取精确的数据模型、接口定义、业务逻辑，补充原型中未明确的细节。
+
+**如果后端代码已存在**（模块已部分或全部实现）：
+
+1. **PO 类分析**：
+   - 搜索 `entity/PO/` 下的实体类，提取 `@TableName` 注解获取真实表名
+   - 提取所有字段（Java 属性名 + 数据库列名映射）
+   - 记录主键策略（雪花算法 / 自增）
+   - 记录字段类型（String / int / BigDecimal / LocalDate 等）
+
+2. **Controller 分析**：
+   - 搜索 `controller/` 下的控制器类
+   - 提取 `@RequestMapping` 获取 URL 前缀
+   - 提取所有端点（方法名 + URL + HTTP Method + 注解）
+   - 记录权限注解（`@OperateLog`、`@TenantCorrelation` 等）
+
+3. **Service 分析**：
+   - 搜索 `service/` 下的服务实现类
+   - 提取核心业务方法签名
+   - 分析 `addOrUpdate` 方法的业务逻辑步骤
+   - 分析审批回调逻辑
+
+4. **BO 类分析**：
+   - 搜索 `entity/BO/` 下的业务对象
+   - 提取保存 BO 的字段结构（含子表列表）
+
+5. **Mapper 分析**：
+   - 搜索 `mapper/` 下的 Mapper 接口
+   - 记录自定义 SQL 方法
+
+6. **枚举/常量分析**：
+   - 搜索模块相关的枚举定义
+   - 记录 CrmEnum.type 值
+
+**如果后端代码不存在**（全新模块）：
+- 跳过本 Phase，标注"后端代码待开发"
+- 数据模型从原型字段推断
+
+**门禁**：后端代码索引完成 ✓
+
+### Phase S2：参数确认
+
+与 template 模式 Phase T1 类似，但增加以下确认项：
+
+| 参数 | 推断值 | 确认 |
+|------|--------|------|
+| 模块中文名 | {提取值} | ? |
+| 模块英文名 | {camelCase} | ? |
+| CrmEnum.type | {已分配/待分配} | ? |
+| 文档输出路径 | `doc/{模块目录}/{模块名}-需求分析文档.md` | ? |
+| 后端代码状态 | 已存在/不存在 | ? |
+| 需要分析的代码范围 | {PO/Controller/Service/全部} | ? |
+
+**门禁**：用户确认参数 ✓
+
+### Phase S3：生成需求分析文档
+
+按 `references/spec-template.md` 的 12 章 + 4 附录结构生成文档。
+
+#### 12 章填写规则
+
+**第 1 章：模块概述**
+- 1.1 业务背景：从原型业务场景描述提炼，2-3 段
+- 1.2 模块定位：入口路径、核心实体（PO 类名 + 表名）、关联模块、数据隔离、变更类型划分
+- 1.3 核心流程：ASCII 流程图，区分不同发起方式，标注审批/同步/回调节点
+
+**第 2 章：功能清单**
+- 表格列出所有功能点（F1-Fn），每项标注实现状态
+- 状态判定：后端代码存在 = ✅ 已实现；原型有但代码无 = ⚠️ 待实现；接口定义但待对接 = ⚠️ 接口预留
+
+**第 3 章：页面与交互设计**（文档最核心章节）
+- 3.0 原型总览：页面清单 + 跳转关系图
+- 3.1~3.N 每个页面独立小节：
+  - **入口**：从哪里进入
+  - **页面布局**：ASCII 线框图（用 `┌─┐│└─┘` 字符）
+  - **操作按钮**：表格列出按钮 + 说明 + 权限/可见条件
+  - **筛选/Tab 区域**：控件表格
+  - **列表字段 / 表单字段**：编号 + 字段名 + 字段名(英文) + 说明
+  - **状态驱动操作**：按状态列出可用按钮
+  - **业务说明侧边栏**：提取原型右侧面板文字，按类别分组
+  - **附加表**（如有）：散件/银色套装/其他备注等
+  - **关联选择弹窗**（如有）：分组结构、字段列表
+
+**第 4 章：数据模型**
+- **必须依据实际 PO 类**，不猜测
+- 每张表一小节：表名 + PO 类名 + 主键策略
+- 字段表格：数据库字段名 | Java 属性名 | 类型 | 说明
+- 标注 v1.x → v2.0 的字段变更（如有）
+- ER 关系图
+
+**第 5 章：接口设计**
+- 5.1 接口列表：从 Controller 提取全部端点
+- 5.2 核心接口详细设计：请求 JSON + 响应 JSON + 业务逻辑步骤
+- URL 前缀从 `@RequestMapping` 获取，不猜测
+
+**第 6 章：审批集成**
+- 审批流配置（CrmEnum.type + examine_record_id）
+- 审批状态枚举（从 PO 类 checkStatus 注释提取，通常 8 个值）
+- 状态流转图（ASCII）
+- 审批流时间线（N 级审批节点）
+- 审批操作按钮（按可见状态列出）
+- 审批回调机制
+
+**第 7 章：ERP 集成**（L3+ 填写）
+- 同步触发时机 + 操作类型
+- 同步内容（BO 字段列表）
+- 同步逻辑（与原型业务规则对齐）
+- 同步流程图
+- 各工厂配置（YAML 示例）
+- LTP/外部系统集成（如有）
+
+**第 8 章：前端实现方案**
+- 路由配置（JavaScript 代码块）
+- 目录结构（树形）
+- API 服务（JavaScript 代码块）
+- 关键交互（列表/详情/新建/弹窗）
+- 状态联动逻辑矩阵
+
+**第 9 章：DDL**
+- 完整 CREATE TABLE 语句
+- 字段名 snake_case，每个字段有 COMMENT
+- 合理索引定义
+- 包含 deleted 逻辑删除字段
+
+**第 10 章：数据初始化**
+- 菜单注册（路径 + 注册方式）
+- Tab 注册（如作为其他模块的 Tab）
+- 自定义字段（wk_crm_field 初始化）
+- 审批流配置
+- ERP 同步配置（YAML）
+- 外部系统集成配置
+
+**第 11 章：业务规则**
+- 约束规则（编号 + 描述）
+- 并发与状态约束
+- 审批规则（状态 → 可用操作矩阵）
+- 其他逻辑（从原型右侧说明提取）
+- 权限（国内/国外、半挂/液罐、标准权限）
+- 字段编辑规则（代码 + 输入方式 + 必填）
+
+**第 12 章：操作日志**
+- 操作 + 日志内容模板 + 触发时机
+- 包含正常流程日志 + 异常流程日志（ERP 同步、撤回反作废等）
+
+#### 4 附录填写规则
+
+**附录 A：枚举与常量**
+- 类型枚举（值 + 名称 + 入库格式）
+- 状态枚举（值 + 名称 + 说明 + 状态色）
+- 业务代码映射（代码 + 名称 + 输入方式）
+- 编号生成规则（格式 + 示例）
+- 模块编码（常量名 + 值 + 说明）
+
+**附录 B：后端代码索引**
+- PO 类 / BO 类 / Mapper / Service / Controller 完整路径
+- 从 Phase S1 分析结果直接填入
+
+**附录 C：差异分析**（版本迭代时）
+- 按类别分组对比差异
+- 类别：数据库表、字段定义、枚举与状态、审批与流程、ERP集成、前端页面、业务规则、接口、菜单注册
+
+**附录 D：原型截图说明**
+- 逐张原型截图说明
+- 包含：位置、页面结构（ASCII）、关键元素表格、映射文档章节
+
+**门禁**：文档已生成且 12 章 + 4 附录结构完整 ✓
+
+### Phase S4：交叉验证
+
+- [ ] 第 4 章数据模型字段与 PO 类一致
+- [ ] 第 5 章接口列表与 Controller 端点一致
+- [ ] 第 6 章审批状态枚举与 PO checkStatus 注释一致
+- [ ] 第 9 章 DDL 字段与第 4 章数据模型一致
+- [ ] 第 3 章页面字段与第 4 章数据模型对应
+- [ ] 第 11 章业务规则覆盖原型右侧说明全部条目
+- [ ] 附录 B 代码路径真实存在
+
+**门禁**：交叉验证通过 ✓
+
+---
+
 **Guardrails**
 
-- **type 不可冲突**：必须查 module-registry.md 确认未占用
-- **formType 必须标准**：只使用 FieldEnum type 对照表中的值
+- **type 不可冲突**：必须查 module-registry.md 确认未占用（template 模式）
+- **formType 必须标准**：只使用 FieldEnum type 对照表中的值（template 模式）
 - **子表 snake_case**：数据库字段名一律 snake_case
 - **表单字段 camelCase**：页面字段名一律 camelCase
-- **系统字段不修改**：9 个系统字段保持不变
+- **系统字段不修改**：9 个系统字段保持不变（template 模式）
 - **parent_id=1**：菜单目录挂在 CRM 根菜单下
-- **双格式同步**：MD 和 XLSX 必须内容一致
+- **双格式同步**：MD 和 XLSX 必须内容一致（template 模式）
 - **不遗漏中集定制类型**：jtContract/kh/jtOrder 等定制类型需正确识别
+- **PO 类为准**：spec 模式下数据模型必须以实际 PO 类为准，不从原型猜测字段（spec 模式）
+- **右侧说明必提取**：原型右侧业务说明面板必须逐字提取到文档中（spec 模式）
+- **接口不猜测**：spec 模式下接口列表必须从 Controller 代码提取，不存在则标注"待开发"（spec 模式）
 
 **Reference Map**
 
@@ -229,8 +393,10 @@ python fill_xlsx.py
 |------|------|------|
 | 模块注册表 | `wk-crm-skills/wk-crm-new-module/references/module-registry.md` | type/基址/FieldEnum 对照表 |
 | 表单渲染模式 | `wk-crm-skills/wk-crm-new-module/references/form-rendering-patterns.md` | 三种模式决策 |
-| MD 空白模板 | `wk-crm-skills/wk-crm-new-module/references/CRM新模块开发需求模板.md` | 模板结构参考 |
+| MD 空白模板 | `wk-crm-skills/wk-crm-new-module/references/CRM新模块开发需求模板.md` | template 模式模板结构 |
 | XLSX 空白模板 | `wk-crm-skills/wk-crm-new-module/references/CRM新模块开发需求模板.xlsx` | Excel 模板文件 |
-| Excel Sheet 映射 | `references/excel-sheet-mapping.md` | 6 个 Sheet 详细列映射 |
+| **需求分析文档模板** | `references/spec-template.md` | **spec 模式 12 章 + 4 附录结构** |
+| Excel Sheet 映射 | `references/excel-sheet-mapping.md` | 6 个 Sheet 详细列映射（template 模式） |
 | 参考模块选择 | `references/reference-modules.md` | 已有模块对照表 |
-| 填充脚本 | `scripts/fill_xlsx.py` | Excel 生成 Python 脚本 |
+| 填充脚本 | `scripts/fill_xlsx.py` | Excel 生成 Python 脚本（template 模式） |
+| **标杆范例** | `doc/2.合同变更/合同变更管理模块-需求分析.md` | **spec 模式输出参考** |

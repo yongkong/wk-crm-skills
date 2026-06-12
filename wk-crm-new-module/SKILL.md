@@ -144,14 +144,83 @@ DDL 生成：
    - `views/crm/{module}/Create.vue` — 新建/编辑页（根据渲染模式 A/B/C 选择不同代码模板）
    - `views/crm/{module}/Detail.vue` — 详情页
 
-3. **自定义字段注册**（5 个位置，缺一不可）：
+3. **列表页头部批量操作工具栏**（index.vue 关键实现）：
+
+   列表页多选后，头部工具栏显示批量操作按钮（如转移/删除）。必须实现以下要素：
+
+   **a) 导入 EventsObj**：
+   ```javascript
+   import EventsObj from '../model/events'
+   ```
+
+   **b) 导入并注册 TransferHandle 组件**（如需转移功能）：
+   ```javascript
+   import TransferHandle from '@/components/Page/SelectionHandle/TransferHandle'
+   // components 中注册：TransferHandle
+   ```
+
+   **c) data 中声明转移相关状态**：
+   ```javascript
+   transferDialogShow: false,
+   transferHandleProps: {}
+   ```
+
+   **d) computed 中定义 handleOperations**：
+   ```javascript
+   handleOperations() {
+     // ⚠️ 重要：如果模块 realm（如 jtContractChange）与 crmType（如 contractChange）不一致，
+     // 不能直接使用 getOperations()，需用正确的 realm key 查权限
+     const ops = []
+     const authKey = '{realm}'  // 与 wk_admin_menu.realm 一致
+     const crmAuth = this.crm?.[authKey]
+     if (crmAuth?.transfer) ops.push(EventsObj.transfer)
+     if (crmAuth?.delete) ops.push(EventsObj.delete)
+     // 如需导出：if (crmAuth?.excelexport) ops.push(EventsObj.export)
+     return ops
+   }
+   ```
+
+   **e) methods 中实现 tableOperationsClick**：
+   ```javascript
+   tableOperationsClick(type) {
+     if (type === 'transfer') {
+       this.transferHandleProps = {
+         request: crm{Module}TransferAPI,
+         params: { ids: this.selectionList.map(item => item[this.rowIdKey]) },
+         showRemoveType: true,
+         help: this.getHelpObj(this.crmType, 'transfer')
+       }
+       this.transferDialogShow = true
+     }
+     // 其他操作类型...
+   }
+   ```
+
+   **f) template 中添加 TransferHandle 组件**：
+   ```html
+   <transfer-handle
+     v-if="transferDialogShow"
+     v-model:dialog-visible="transferDialogShow"
+     :props="transferHandleProps"
+     @handle="handleHandle({ type: 'transfer' })" />
+   ```
+
+   **⚠️ realm vs crmType 权限 key 陷阱**：
+   - 后端 `wk_admin_menu.realm` 定义的权限 key（如 `jtContractChange`）原样传递到前端 `this.crm` 对象
+   - 前端组件的 `crmType` 可能与 realm 不一致（如 `crmType: 'contractChange'`）
+   - `Table.js` mixin 的 `getOperations()` 使用 `this.crm[this.crmType]` 查权限，若 key 不匹配会导致按钮不显示
+   - **解决方案**：当 realm ≠ crmType 时，在 `handleOperations` 中直接用正确的 realm key 构造操作列表
+
+   **参考实现**：`contractChange/index.vue`（realm=jtContractChange, crmType=contractChange）
+
+4. **自定义字段注册**（5 个位置，缺一不可）：
    - `CrmFieldServiceImpl.java` queryFields() sortMap — 已在 Phase 1 第 6 步完成
    - `views/admin/crm/customField/index.vue` — label→moduleType 映射 + 图标映射
    - `views/admin/fields/index.vue` — title 映射
    - （可选）`systemFields.js` — 系统字段中文名映射
    - （可选）`isFieldLibDisabledModule` / `initCom()` — 字段库黑名单/字段类型过滤
 
-4. **审批流前端注册**（仅 L2+，9 处，参考 `references/examine-integration.md` §4）：
+5. **审批流前端注册**（仅 L2+，9 处，参考 `references/examine-integration.md` §4）：
    - `ExamineInfoSection.vue` — isCRMExamine() label 数组
    - `ExamineInfoSection.vue` — examineClick() → createType 映射
    - `ExamineInfoSection.vue` — examineClick() → crmLabel 映射（独立于 createType，不要遗漏！）
