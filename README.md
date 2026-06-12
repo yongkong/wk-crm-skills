@@ -6,8 +6,36 @@
 
 | 技能 | 说明 | 阶段 |
 |------|------|------|
+| [wk-crm-prototype-to-spec](./wk-crm-prototype-to-spec/) | 从原型/描述生成需求文档（MD + XLSX） | 5 Phase |
 | [wk-crm-new-module](./wk-crm-new-module/) | 从零创建新 CRM 业务模块 | 6 Phase |
 | [wk-crm-audit-module](./wk-crm-audit-module/) | 对已有 CRM 模块进行全面审计与查漏补缺 | 5 Phase |
+
+**开发流水线**：`prototype-to-spec` → `new-module` → `audit-module`
+
+```
+蓝湖原型/截图/描述  →  需求文档(MD+XLSX)  →  完整代码  →  审计报告
+   /wk-crm-prototype-to-spec    /wk-crm-new-module    /wk-crm-audit-module
+```
+
+## wk-crm-prototype-to-spec
+
+根据蓝湖原型或文字描述，填写 CRM 新模块开发需求模板，同步生成 Markdown 和 Excel 双格式文件。输出可直接作为 `/wk-crm-new-module` 的输入。
+
+**5 个阶段**：
+
+1. **Phase 0** — 原型分析与数据提取（蓝湖 URL / 截图 / 文字描述）
+2. **Phase 1** — 参数确认与冲突检测（type / 菜单基址 / 复杂度 / 渲染模式）
+3. **Phase 2** — 填写 Markdown 模板（7 个章节）
+4. **Phase 3** — 生成 Excel 文件（6 个 Sheet，openpyxl）
+5. **Phase 4** — 交叉验证（MD 与 XLSX 一致性）
+
+### 参考文档
+
+| 文档 | 用途 |
+|------|------|
+| `references/excel-sheet-mapping.md` | 6 个 Sheet 与 MD 章节的精确列映射 |
+| `references/reference-modules.md` | 已有模块对照表（按复杂度/业务特征选择参考） |
+| `scripts/fill_xlsx.py` | Excel 生成 Python 脚本模板 |
 
 ## wk-crm-new-module
 
@@ -56,11 +84,14 @@
 
 ## 使用方式
 
-这两个技能设计为 AI Agent（如 Claude、Qoder）的 Skill 文件使用：
+这三个技能设计为 AI Agent（如 Claude、Qoder）的 Skill 文件使用：
 
 1. 将技能目录放入项目的 `.claude/skills/` 或对应 AI 工具的技能目录
-2. 通过 `/wk-crm-new-module` 或 `/wk-crm-audit-module` 斜杠命令调用
-3. 提供需求模板（Excel/Markdown）或模块描述作为输入
+2. 通过斜杠命令调用：
+   - `/wk-crm-prototype-to-spec` — 从原型/描述生成需求文档
+   - `/wk-crm-new-module` — 从需求文档生成完整代码
+   - `/wk-crm-audit-module` — 对已有模块进行审计
+3. 推荐按流水线顺序使用：先 `prototype-to-spec` 生成需求，再 `new-module` 生成代码
 
 ## 项目背景
 
